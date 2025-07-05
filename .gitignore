@@ -142,3 +142,6 @@ terraform.tfstate.*
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
+
+#vectors
+vector_store/
