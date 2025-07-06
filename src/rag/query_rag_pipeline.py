@@ -11,12 +11,13 @@ RAG Query Pipeline for Complaint Analysis
 - Generates answer based on retrieved context
 """
 
-import os
+# import os
 import torch
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.llms import HuggingFacePipeline
-from langchain_core.prompts import PromptTemplate
+
+# from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from transformers import pipeline
 
@@ -30,7 +31,10 @@ EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 TOP_K = 5
 
-PROMPT_TEMPLATE = """You are a financial analyst assistant for CrediTrust. Your task is to answer questions about customer complaints. Use the following retrieved complaint excerpts to formulate your answer. If the context doesn't contain the answer, say you don't have enough information.
+PROMPT_TEMPLATE = """You are a financial analyst assistant for CrediTrust.
+Your task is to answer questions about customer complaints. Use the following
+retrieved complaint excerpts to formulate your answer. If the context doesn't
+contain the answer, say you don't have enough information.
 
 Context:
 {context}
@@ -45,10 +49,13 @@ Answer:
 # FUNCTIONS
 # ------------------------------------------
 
+
 def load_vector_store(vector_store_dir, embedding_model_name):
     """Load FAISS vector store from disk."""
     embeddings_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
-    vector_store = FAISS.load_local(vector_store_dir, embeddings_model, allow_dangerous_deserialization=True)
+    vector_store = FAISS.load_local(
+        vector_store_dir, embeddings_model, allow_dangerous_deserialization=True
+    )
     return vector_store
 
 
@@ -63,11 +70,8 @@ def build_prompt(context_chunks, question):
     # Join retrieved chunks into a single string
     context_texts = [doc.page_content for doc in context_chunks]
     context_str = "\n---\n".join(context_texts)
-    
-    prompt = PROMPT_TEMPLATE.format(
-        context=context_str,
-        question=question
-    )
+
+    prompt = PROMPT_TEMPLATE.format(context=context_str, question=question)
     return prompt
 
 
@@ -77,16 +81,17 @@ def generate_answer(prompt):
         model="google/flan-t5-small",
         device=0 if torch.cuda.is_available() else -1,
         max_new_tokens=512,
-        temperature=0.2
+        temperature=0.2,
     )
-    
+
     llm = HuggingFacePipeline(pipeline=llm_pipeline)
-    
+
     output_parser = StrOutputParser()
     chain = llm | output_parser
-    
+
     answer = chain.invoke(prompt)
     return answer
+
 
 def answer_question(question, vector_store, top_k=5):
     """End-to-end RAG process for a single user question."""
