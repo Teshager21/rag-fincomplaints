@@ -190,7 +190,7 @@ with chat_container:
         # Show sources truncated
         sources_md = "<br>".join(
             [
-                f"- {src.page_content[:300].replace('\n', ' ')}..."
+                f"- {src.page_content[:300].replace(chr(10), ' ')}..."  # chr(10) is \n
                 for src in message["sources"]
             ]
         )
