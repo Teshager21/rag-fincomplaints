@@ -1,34 +1,17 @@
 #!/usr/bin/env python3
 # src/rag/query_rag_pipeline.py
 
-"""
-RAG Query Pipeline for Complaint Analysis
-
-- Loads vector store (FAISS)
-- Embeds user question
-- Retrieves relevant complaint narrative chunks
-- Constructs prompt for LLM
-- Generates answer based on retrieved context
-"""
-
-# import os
 import torch
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.llms import HuggingFacePipeline
 
-# from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from transformers import pipeline
 
 
-# ------------------------------------------
-# CONFIG
-# ------------------------------------------
-
 VECTOR_STORE_DIR = "vector_store/faiss_index"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
 TOP_K = 5
 
 PROMPT_TEMPLATE = """You are a financial analyst assistant for CrediTrust.
@@ -45,21 +28,17 @@ Question:
 Answer:
 """
 
-# ------------------------------------------
-# FUNCTIONS
-# ------------------------------------------
 
-
-def load_vector_store(vector_store_dir, embedding_model_name):
+def load_vectorstore():
     """Load FAISS vector store from disk."""
-    embeddings_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
+    embeddings_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
     vector_store = FAISS.load_local(
-        vector_store_dir, embeddings_model, allow_dangerous_deserialization=True
+        VECTOR_STORE_DIR, embeddings_model, allow_dangerous_deserialization=True
     )
     return vector_store
 
 
-def retrieve_chunks(vector_store, query, top_k=5):
+def retrieve_chunks(vector_store, query, top_k=TOP_K):
     """Embed question and retrieve top-k similar chunks."""
     results = vector_store.similarity_search(query, k=top_k)
     return results
@@ -67,10 +46,8 @@ def retrieve_chunks(vector_store, query, top_k=5):
 
 def build_prompt(context_chunks, question):
     """Construct prompt for LLM."""
-    # Join retrieved chunks into a single string
     context_texts = [doc.page_content for doc in context_chunks]
     context_str = "\n---\n".join(context_texts)
-
     prompt = PROMPT_TEMPLATE.format(context=context_str, question=question)
     return prompt
 
@@ -83,17 +60,14 @@ def generate_answer(prompt):
         max_new_tokens=512,
         temperature=0.2,
     )
-
     llm = HuggingFacePipeline(pipeline=llm_pipeline)
-
     output_parser = StrOutputParser()
     chain = llm | output_parser
-
     answer = chain.invoke(prompt)
     return answer
 
 
-def answer_question(question, vector_store, top_k=5):
+def answer_question(question, vector_store, top_k=TOP_K):
     """End-to-end RAG process for a single user question."""
     chunks = retrieve_chunks(vector_store, question, top_k)
     prompt = build_prompt(chunks, question)
@@ -101,17 +75,10 @@ def answer_question(question, vector_store, top_k=5):
     return answer, chunks
 
 
-# ------------------------------------------
-# MAIN SCRIPT (example usage)
-# ------------------------------------------
-
 if __name__ == "__main__":
-    vs = load_vector_store(VECTOR_STORE_DIR, EMBEDDING_MODEL_NAME)
-
-    # Example question
+    vs = load_vectorstore()
     question = "How often do people mention fraud in credit cards?"
-
-    answer, sources = answer_question(question, vs, top_k=5)
+    answer, sources = answer_question(question, vs, top_k=TOP_K)
 
     print("\n=== GENERATED ANSWER ===")
     print(answer)
