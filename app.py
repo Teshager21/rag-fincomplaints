@@ -3,26 +3,32 @@ import time
 import sys
 import os
 
-# Add the "src" directory to sys.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
-# ----------------------------------------------------
 # Import your RAG pipeline functions
 # ----------------------------------------------------
 from rag.query_rag_pipeline import answer_question, load_vectorstore
 
+# ----------------------------------------------------
+
+# Add the "src" directory to sys.path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
 # Load vector store once at startup
 vs = load_vectorstore()
 
-st.set_page_config(page_title="Financial Complaints RAG Chat", page_icon="💬", layout="wide")
+st.set_page_config(
+    page_title="Financial Complaints RAG Chat", page_icon="💬", layout="wide"
+)
 
 st.title("💬 Financial Complaints RAG Chatbot")
 
-st.markdown("""
-Ask any question related to financial complaints.  
-The AI will answer based on real consumer complaint data.  
-Below each answer, you'll see the retrieved text excerpts used as context for transparency.
-""")
+st.markdown(
+    """
+Ask any question related to financial complaints.
+The AI will answer based on real consumer complaint data.
+Below each answer, you'll see the retrieved text excerpts
+used as context for transparency.
+"""
+)
 
 # Initialize chat history in session state
 if "chat_history" not in st.session_state:
@@ -50,16 +56,14 @@ if ask_button and user_input.strip() != "":
     answer, sources = answer_question(user_input, vs, top_k=5)
 
     # Store in chat history
-    st.session_state.chat_history.append({
-        "question": user_input,
-        "answer": answer,
-        "sources": sources
-    })
+    st.session_state.chat_history.append(
+        {"question": user_input, "answer": answer, "sources": sources}
+    )
 
 # Display conversation
 for message in st.session_state.chat_history:
     st.markdown(f"**🧑‍💻 You:** {message['question']}")
-    
+
     # Simulate streaming effect
     placeholder = st.empty()
     partial = ""
@@ -67,7 +71,7 @@ for message in st.session_state.chat_history:
         partial += char
         placeholder.markdown(f"**🤖 AI:** {partial}")
         time.sleep(0.01)
-    
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Show retrieved context chunks
