@@ -1,19 +1,27 @@
-import streamlit as st
-import time
 import sys
 import os
 
-# Import your RAG pipeline functions
-# ----------------------------------------------------
-from rag.query_rag_pipeline import answer_question, load_vectorstore
+# import time
+import streamlit as st
 
-# ----------------------------------------------------
+# Import RAG pipeline
+from rag.query_rag_pipeline import answer_question, load_vector_store
 
-# Add the "src" directory to sys.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Add src to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, "src")
+sys.path.insert(0, src_dir)
 
-# Load vector store once at startup
-vs = load_vectorstore()
+
+# Cache vector store
+@st.cache_resource(show_spinner="Loading vector store...")
+def get_vector_store():
+    return load_vector_store(
+        "vector_store/faiss_index", "sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+
+vs = get_vector_store()
 
 st.set_page_config(
     page_title="Financial Complaints RAG Chat", page_icon="💬", layout="wide"
@@ -23,19 +31,16 @@ st.title("💬 Financial Complaints RAG Chatbot")
 
 st.markdown(
     """
-Ask any question related to financial complaints.
-The AI will answer based on real consumer complaint data.
-Below each answer, you'll see the retrieved text excerpts
-used as context for transparency.
+Ask any question about financial complaints.
+The AI will answer based on real customer complaints.
+Below each answer, you'll see the retrieved excerpts used as context.
 """
 )
 
-# Initialize chat history in session state
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Text input
-user_input = st.text_input("Type your question here:", value="", key="user_input")
+user_input = st.text_input("Your question:", value="", key="user_input")
 
 col1, col2 = st.columns([1, 5])
 
@@ -45,38 +50,73 @@ with col1:
 with col2:
     clear_button = st.button("Clear Chat")
 
-# Clear chat history if requested
 if clear_button:
     st.session_state.chat_history = []
-    st.experimental_rerun()
+    st.rerun()
 
-# Process user query
 if ask_button and user_input.strip() != "":
-    # Run RAG pipeline
     answer, sources = answer_question(user_input, vs, top_k=5)
-
-    # Store in chat history
     st.session_state.chat_history.append(
         {"question": user_input, "answer": answer, "sources": sources}
     )
 
-# Display conversation
-for message in st.session_state.chat_history:
-    st.markdown(f"**🧑‍💻 You:** {message['question']}")
+# --- Styling ---
+chat_container = st.container()
 
-    # Simulate streaming effect
-    placeholder = st.empty()
-    partial = ""
-    for char in message["answer"]:
-        partial += char
-        placeholder.markdown(f"**🤖 AI:** {partial}")
-        time.sleep(0.01)
+with chat_container:
+    st.markdown(
+        """
+        <style>
+        .chat-message {
+            background-color: var(--secondary-background-color);
+            color: var(--text-color);
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+        .user-message {
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            margin-left: auto;
+            margin-right: 10px;
+            text-align: right;
+        }
+        .ai-message {
+            background-color: var(--secondary-background-color);
+            color: var(--text-color);
+            margin-left: 10px;
+            margin-right: auto;
+            text-align: left;
+        }
+        .sources {
+            font-size: 14px;
+            color: var(--text-color);
+            margin-left: 10px;
+            margin-right: 10px;
+            margin-top: -8px;
+            margin-bottom: 15px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Show retrieved context chunks
-    st.markdown("**🔎 Sources Used:**")
-    for i, chunk in enumerate(message["sources"], start=1):
-        st.info(f"[{i}] {chunk}")
-
-    st.markdown("---")
+    for msg in st.session_state.chat_history:
+        st.markdown(
+            f'<div class="chat-message user-message">🧑‍💻 {msg["question"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="chat-message ai-message">🤖 {msg["answer"]}</div>',
+            unsafe_allow_html=True,
+        )
+        sources_md = "<br>".join(
+            [f"- {src.page_content[:300]}..." for src in msg["sources"]]
+        )
+        st.markdown(
+            f'<div class="sources"><b>🔎 Sources used:</b><br>{sources_md}</div>',
+            unsafe_allow_html=True,
+        )

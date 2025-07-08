@@ -9,7 +9,6 @@ from langchain_community.llms import HuggingFacePipeline
 from langchain_core.output_parsers import StrOutputParser
 from transformers import pipeline
 
-
 VECTOR_STORE_DIR = "vector_store/faiss_index"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 TOP_K = 5
@@ -29,11 +28,17 @@ Answer:
 """
 
 
-def load_vectorstore():
-    """Load FAISS vector store from disk."""
-    embeddings_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+VECTOR_STORE_DIR = "vector_store/faiss_index"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+def load_vector_store(
+    vector_store_dir: str = VECTOR_STORE_DIR,
+    embedding_model_name: str = EMBEDDING_MODEL_NAME,
+):
+    embeddings_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
     vector_store = FAISS.load_local(
-        VECTOR_STORE_DIR, embeddings_model, allow_dangerous_deserialization=True
+        vector_store_dir, embeddings_model, allow_dangerous_deserialization=True
     )
     return vector_store
 
@@ -76,7 +81,7 @@ def answer_question(question, vector_store, top_k=TOP_K):
 
 
 if __name__ == "__main__":
-    vs = load_vectorstore()
+    vs = load_vector_store()
     question = "How often do people mention fraud in credit cards?"
     answer, sources = answer_question(question, vs, top_k=TOP_K)
 
